@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"fmt"
+	pokeApi "github.com/WaronLimsakul/pokedexcli/internal"
 	"os"
 	"strings"
 )
@@ -10,33 +11,66 @@ import (
 type cliCommand struct {
 	name        string
 	description string
-	callback    func() error
+	callback    func(*pokeApi.Config) error
 }
 
-var commandMap map[string]cliCommand
+var commandsMap map[string]cliCommand
 
 func cleanInput(text string) []string {
 	cleaned := strings.Fields(strings.ToLower(text))
 	return cleaned
 }
 
-func commandExit() error {
+func commandExit(configp *pokeApi.Config) error {
 	fmt.Println("Closing the Pokedex... Goodbye!")
 	os.Exit(0)
 	return nil
 }
 
-func commandHelp() error {
+func commandHelp(configp *pokeApi.Config) error {
 	fmt.Printf("Welcome to the Pokedex!\nUsage:\n\n")
-	for _, command := range commandMap {
+	for _, command := range commandsMap {
 		fmt.Printf("%s: %s\n", command.name, command.description)
+	}
+	return nil
+}
+
+func commandMap(configp *pokeApi.Config) error {
+	locationAreasResponse, err := pokeApi.FetchLocationAreas(configp.Next)
+	if err != nil {
+		return fmt.Errorf("Error fetching location areas: %v", err)
+	}
+	configp.Next = locationAreasResponse.Next
+	configp.Previous = locationAreasResponse.Previous
+
+	for _, area := range locationAreasResponse.Results {
+		fmt.Printf("%s\n", area.Name)
+	}
+	return nil
+}
+
+func commandMapBack(configp *pokeApi.Config) error {
+	if configp.Previous == "" {
+		fmt.Println("you're on the first page")
+		return nil
+	}
+	locationAreasResponse, err := pokeApi.FetchLocationAreas(configp.Previous)
+
+	if err != nil {
+		return fmt.Errorf("Error fetching location areas: %v", err)
+	}
+	configp.Next = locationAreasResponse.Next
+	configp.Previous = locationAreasResponse.Previous
+
+	for _, area := range locationAreasResponse.Results {
+		fmt.Printf("%s\n", area.Name)
 	}
 	return nil
 }
 
 func main() {
 
-	commandMap = map[string]cliCommand{
+	commandsMap = map[string]cliCommand{
 		"exit": {
 			name:        "exit",
 			description: "Exit the Pokedex",
@@ -47,7 +81,19 @@ func main() {
 			description: "Displays a help message",
 			callback:    commandHelp,
 		},
+		"map": {
+			name:        "map",
+			description: "Displays the names of 20 location areas in the Pokenmon world",
+			callback:    commandMap,
+		},
+		"mapb": {
+			name:        "mapb",
+			description: "Displays the previous 20 locations",
+			callback:    commandMapBack,
+		},
 	}
+
+	configp := &pokeApi.Config{Next: "https://pokeapi.co/api/v2/location-area/", Previous: ""}
 
 	scanner := bufio.NewScanner(os.Stdin)
 	for true {
@@ -58,14 +104,11 @@ func main() {
 		}
 		text := scanner.Text()
 		inputCommand := cleanInput(text)[0]
-		command, ok := commandMap[inputCommand]
+		command, ok := commandsMap[inputCommand]
 		if ok {
-			command.callback()
+			command.callback(configp)
 		} else {
 			fmt.Println("Unknown command")
 		}
 	}
-	cleaned := cleanInput("  Hello World  ")
-	fmt.Printf("text: '  Hello World  ', cleaned: %v\n", cleaned)
-	fmt.Printf("length: %v", len(cleaned))
 }
