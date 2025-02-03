@@ -3,9 +3,12 @@ package main
 import (
 	"bufio"
 	"fmt"
-	pokeApi "github.com/WaronLimsakul/pokedexcli/internal"
 	"os"
 	"strings"
+	"time"
+
+	pokeApi "github.com/WaronLimsakul/pokedexcli/internal/pokeapi"
+	"github.com/WaronLimsakul/pokedexcli/internal/pokecache"
 )
 
 type cliCommand struct {
@@ -15,6 +18,7 @@ type cliCommand struct {
 }
 
 var commandsMap map[string]cliCommand
+var mainCache *pokecache.Cache
 
 func cleanInput(text string) []string {
 	cleaned := strings.Fields(strings.ToLower(text))
@@ -36,7 +40,7 @@ func commandHelp(configp *pokeApi.Config) error {
 }
 
 func commandMap(configp *pokeApi.Config) error {
-	locationAreasResponse, err := pokeApi.FetchLocationAreas(configp.Next)
+	locationAreasResponse, err := pokeApi.FetchLocationAreas(configp.Next, mainCache)
 	if err != nil {
 		return fmt.Errorf("Error fetching location areas: %v", err)
 	}
@@ -54,7 +58,7 @@ func commandMapBack(configp *pokeApi.Config) error {
 		fmt.Println("you're on the first page")
 		return nil
 	}
-	locationAreasResponse, err := pokeApi.FetchLocationAreas(configp.Previous)
+	locationAreasResponse, err := pokeApi.FetchLocationAreas(configp.Previous, mainCache)
 
 	if err != nil {
 		return fmt.Errorf("Error fetching location areas: %v", err)
@@ -69,6 +73,8 @@ func commandMapBack(configp *pokeApi.Config) error {
 }
 
 func main() {
+
+	mainCache = pokecache.NewCache(10 * time.Second)
 
 	commandsMap = map[string]cliCommand{
 		"exit": {
