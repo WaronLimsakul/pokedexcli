@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"fmt"
+	"math/rand"
 	"os"
 	"strings"
 	"time"
@@ -20,6 +21,7 @@ type cliCommand struct {
 
 var commandsMap map[string]cliCommand
 var mainCache *pokecache.Cache
+var pokedex map[string]pokeApi.PokemonDetail
 
 func cleanInput(text string) []string {
 	cleaned := strings.Fields(strings.ToLower(text))
@@ -95,10 +97,48 @@ func commandExplore(configp *pokeApi.Config, args []string) error {
 	return nil
 }
 
+func commandCatch(configp *pokeApi.Config, args []string) error {
+	if len(args) == 0 || args[0] == "" {
+		fmt.Printf("pokemon name required\n")
+		return fmt.Errorf("pokemon name required")
+	}
+
+	nameInput := args[0]
+
+	_, ok := pokedex[nameInput]
+
+	if ok {
+		fmt.Printf("we already have %s!\n", nameInput)
+		return nil
+	}
+
+	fmt.Printf("Throwing a Pokeball at %s...\n", nameInput)
+
+	// get pokemon data and random the possibility
+	pokemonInfo, err := pokeApi.GetPokemonDetail(nameInput, mainCache)
+	if err != nil {
+		fmt.Printf("error cathcing pokemon: %v\n", err)
+		return fmt.Errorf("error cathcing pokemon")
+	}
+
+	baseExp := pokemonInfo.BaseExperience
+	pokemonName := pokemonInfo.Name
+	randNum := rand.Intn(370)
+
+	// this means catch success
+	if baseExp < randNum {
+		pokedex[pokemonName] = pokemonInfo
+		fmt.Printf("%s was caught!\n", pokemonName)
+		return nil
+	} else {
+		fmt.Printf("%s escaped!\n", pokemonName)
+		return nil
+	}
+}
+
 func main() {
-
+	pokedex = map[string]pokeApi.PokemonDetail{}
 	mainCache = pokecache.NewCache(10 * time.Second)
-
 	commandsMap = map[string]cliCommand{
 		"exit": {
 			name:        "exit",
@@ -124,6 +164,11 @@ func main() {
 			name:        "explore",
 			description: "Displays a list of all Pokemon located in the area",
 			callback:    commandExplore,
+		},
+		"catch": {
+			name:        "catch",
+			description: "Catch a pokemon",
+			callback:    commandCatch,
 		},
 	}
 

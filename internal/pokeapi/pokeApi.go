@@ -28,6 +28,11 @@ type ExploreAreaResponse struct {
 	} `json:"pokemon_encounters"`
 }
 
+type PokemonDetail struct {
+	Name           string `json:"name"`
+	BaseExperience int    `json:"base_experience"`
+}
+
 type Config struct {
 	Next     string
 	Previous string
@@ -88,4 +93,34 @@ func ExploreAreaPokemons(location string, cache *pokecache.Cache) (*ExploreAreaR
 	}
 
 	return &response, nil
+}
+
+func GetPokemonDetail(pokemon string, cache *pokecache.Cache) (PokemonDetail, error) {
+	fullURL := "https://pokeapi.co/api/v2/pokemon/" + pokemon + "/"
+	var jsonData []byte
+	cacheJson, ok := cache.Get(fullURL)
+	if ok {
+		jsonData = cacheJson
+	} else {
+		res, err := http.Get(fullURL)
+		if err != nil {
+			return PokemonDetail{}, fmt.Errorf("error fethcing pokemon information")
+		}
+
+		if res.StatusCode != http.StatusOK {
+			return PokemonDetail{}, fmt.Errorf("Pokemon not found")
+		}
+
+		defer res.Body.Close()
+		jsonData, err = io.ReadAll(res.Body)
+		if err != nil {
+			return PokemonDetail{}, fmt.Errorf("error parsing pokemon information")
+		}
+	}
+
+	var pokemonInfo PokemonDetail
+	if err := json.Unmarshal(jsonData, &pokemonInfo); err != nil {
+		return PokemonDetail{}, fmt.Errorf("error unmarshalling pokemon detail")
+	}
+	return pokemonInfo, nil
 }
