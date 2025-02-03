@@ -21,7 +21,7 @@ type cliCommand struct {
 
 var commandsMap map[string]cliCommand
 var mainCache *pokecache.Cache
-var pokedex map[string]pokeApi.PokemonDetail
+var pokedex map[string]*pokeApi.PokemonDetail
 
 func cleanInput(text string) []string {
 	cleaned := strings.Fields(strings.ToLower(text))
@@ -136,8 +136,35 @@ func commandCatch(configp *pokeApi.Config, args []string) error {
 	}
 }
 
+func commandInspect(configp *pokeApi.Config, args []string) error {
+	if len(args) == 0 || args[0] == "" {
+		fmt.Printf("pokemon name required\n")
+		return fmt.Errorf("pokemon name required")
+	}
+
+	nameInput := args[0]
+	pokemonInfo, ok := pokedex[nameInput]
+	if !ok {
+		fmt.Printf("you have not caught %s yet...\n", nameInput)
+		return nil
+	}
+
+	fmt.Printf("Name: %s\n", pokemonInfo.Name)
+	fmt.Printf("Height: %v\n", pokemonInfo.Height)
+	fmt.Printf("Weight: %v\n", pokemonInfo.Weight)
+	fmt.Println("Stats:")
+	for _, stat := range pokemonInfo.Stats {
+		fmt.Printf("    -%s: %v\n", stat.Stat.Name, stat.BaseStat)
+	}
+	fmt.Println("Types:")
+	for _, t := range pokemonInfo.Types {
+		fmt.Printf("    -%s\n", t.Type.Name)
+	}
+	return nil
+}
+
 func main() {
-	pokedex = map[string]pokeApi.PokemonDetail{}
+	pokedex = map[string]*pokeApi.PokemonDetail{}
 	mainCache = pokecache.NewCache(10 * time.Second)
 	commandsMap = map[string]cliCommand{
 		"exit": {
@@ -169,6 +196,11 @@ func main() {
 			name:        "catch",
 			description: "Catch a pokemon",
 			callback:    commandCatch,
+		},
+		"inspect": {
+			name:        "inspect",
+			description: "Displays your caught pokemon",
+			callback:    commandInspect,
 		},
 	}
 
