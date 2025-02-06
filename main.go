@@ -163,6 +163,18 @@ func commandInspect(configp *pokeApi.Config, args []string) error {
 	return nil
 }
 
+func commandPokedex(configp *pokeApi.Config, args []string) error {
+	if len(pokedex) == 0 {
+		fmt.Println("You have not caught a Pokemon yet.")
+		return nil
+	}
+	fmt.Println("Your Pokedex:")
+	for _, pokemonDetail := range pokedex {
+		fmt.Printf(" - %s\n", pokemonDetail.Name)
+	}
+	return nil
+}
+
 func main() {
 	pokedex = map[string]*pokeApi.PokemonDetail{}
 	mainCache = pokecache.NewCache(10 * time.Second)
@@ -201,6 +213,11 @@ func main() {
 			name:        "inspect",
 			description: "Displays your caught pokemon",
 			callback:    commandInspect,
+		},
+		"pokedex": {
+			name:        "pokedex",
+			description: "Displays a list of all the names of the Pokemon the user has caught.",
+			callback:    commandPokedex,
 		},
 	}
 
